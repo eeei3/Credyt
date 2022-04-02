@@ -6,10 +6,13 @@
 #include <ctype.h>
 #define LIMIT "10"
 #include <stdbool.h>
+#include <sys/stat.h>
+/*#include <main.h>*/
 
 int sub_num = 0;
 char cwd[PATH_MAX];
 char cwd1[PATH_MAX];
+struct stat sb;
 
 int newlines(FILE *file)
 {
@@ -23,6 +26,7 @@ int newlines(FILE *file)
 	}
 	return nl;
 }
+
 
 char *readFile(char *fileName)
 {
@@ -66,92 +70,101 @@ void get_memes(char sub[25])
 	
 	strcat(url, LIMIT);
 
-	printf("URL called:\n");
-	printf("%s\n", url);
-	
 	/*
 	 * Creating the first command
 	 */
-	command = malloc(9999);
+	command = (char *) malloc(9999);
 	strcat(command, "curl -H \"User-agent: 'your bot 0.1'\" \"");
 	strcat(command, url);
 	strcat(command, "\" > \"");
 	strcat(command, cwd1);
 	strcat(command, "/tmp.json\"\0");
-	
 	system(command);
-
-	printf("command just executed:\n");
-	printf("%s\n", command);
 
 	/*
 	 * Wiping the url and command
 	 */
-	command = "";
+	command = NULL;
 
 	system("./main.py");
 
-	printf("Executed python script\n");
-
 	FILE *imagefile = fopen("imagelist", "r");
-	
+	printf("Downloading the images\n");	
 	while ((c = fgetc(imagefile)) != EOF) {
 		if ((c != '\n'))
 		{
-			if (c=='/')
-				x++;
+			if (c=='/') x++;
 			if ((x==3) && (c != '/'))
 				imgname[b++]=(int)c;
-			imageurl[n++] = (int)c;
+			if ((c != '@') && (c != '\t'))
+				imageurl[n++] = (int)c;
 		}
 		else if (c == '\n')
 		{
-			if (imgname[0] == '\0')
-			{
-				printf("We just got bullshitted\n");
-			}
+			printf("\n");
+			if (imgname[0] == '\0');
 			else
 			{
-			printf("reached a newline\n");
 			imgname[b] = '\0';
-			downloadimage = malloc(600);
-			b = 0;
-			x = 0;
-			n = 0;
-			printf("The image name:\n");
-			printf("%s\n", imgname);
-			printf("The image url:\n");
-			printf("%s\n", imageurl);
+			imageurl[n] = '\0';
+			downloadimage = (char *) malloc(900);
+			b = 0, x = 0, n = 0;
 
 			/* Creating the curl command */
-
-			strcat(downloadimage, "curl -H \"User-agent: 'your bot 0.1'\" \"");
-			strcat(downloadimage, imageurl);
-			strcat(downloadimage, "\" > \"");
-			strcat(downloadimage, imgname);
-			strcat(downloadimage, "\"\0");
-
-			system(downloadimage);
+				
+			if (imageurl[7] == 'v')
+				;
+			else if ((strstr(imgname, ".jpg") != NULL) || (strstr(imgname, ".png") != NULL) || (strstr(imgname, ".gif") != NULL))
+				{
+				strcpy(downloadimage, "curl -H \"User-agent: 'your bot 0.1'\" \"");
+				strncat(downloadimage, imageurl, 60);
+				strcat(downloadimage, "\" > \"images/");
+				strncat(downloadimage, sub, 25);
+				strncat(downloadimage, "/", 4);
+				strncat(downloadimage, imgname, 90);
+				strcat(downloadimage, "\"\0");
+				system(downloadimage);
 			
-			/* Freeing memory */
-			printf("The command just executed:\n");
+				/* Freeing memory */
+				}
 			printf("%s\n", downloadimage);
-			downloadimage = "";
+			int m = 0;
+			int u = 60;
+			int h = 90;
+			while (m < u)
+				imageurl[m++] = '\0';
+			m = 0;
+			while ( m < h)
+				imgname[m++] = '\0';
+			fflush(stdout);
 			}
+
 		}
 	}
+	printf("Images done downloading\n");
 
 	/*
 	 *Clearing the lists
 	 */
 	fclose(imagefile);
+	free(command);
+	free(downloadimage);
+	command = NULL;
+	downloadimage = NULL;
 	return;
 }
 
 int main()
 {	
+	if (stat("images", &sb) == 0 && S_ISDIR(sb.st_mode))
+	{
+		system("rm -r images/*");
+	}
+	else
+	{
+		system("mkdir images");
+	}
 	void get_memes(char sub[25]);
-
 	if (getcwd(cwd, sizeof(cwd)) != NULL){
 		strcat(cwd1, cwd);
 		strcat(cwd,"/subredditlist");
@@ -159,69 +172,56 @@ int main()
 	FILE *fp = fopen(cwd, "r");
 	if (fp == NULL)
 	{
-		printf("Problem");
 		return 1;
 	}
+
 	size_t n = 0;
 	int c;
 	int x = 0, a = 0;
 	int numofsubs = newlines(fp);
-	char subreddits[numofsubs-1][25];
+	char subreddits[numofsubs-1][26];
+	char *foldercommand = malloc(900);
 	
 	fflush(stdout);
 	/* 
 	*Getting directory for the subreddit list
 	*/
 
-	printf("\nbefore\n");
-
-
 	/* Getting the list of subreddits */
 
 	
 	rewind(fp);
 	
-	printf("here\n");
-
 	while ((c = fgetc(fp)) != EOF) {
-		if ((c != '\n') && (isalpha(c)))
+		if (c != '\n')
 		{
-			subreddits[x][n] = c;
-			n++;
+			subreddits[x][n++] = c;
 		}
 		else if (c == '\n')
 		{
-			subreddits[x][n] = '\0';
+			subreddits[x++][n] = '\0';
 			n = 0;
-			x++;
-			printf("\n");
 		}
 	}
 	
 	fflush(stdout);
 
-
-	printf("done\n");
-	printf("subreddit1\n");
-	printf("\n%s\n", subreddits[0]);
-	printf("subreddit2\n");
-	printf("\n%s\n", subreddits[1]);
-	printf("subreddit3\n");
-	printf("\n%s\n", subreddits[2]);
-	printf("subreddit4\n");
-	printf("\n%s\n", subreddits[3]);
-	printf("subreddit5\n");
-	printf("\n%s\n", subreddits[4]);
-
 	fclose(fp);
-	printf("File directory: %s\n", cwd);
-
-	printf("Getting da memes!\n");	
 	while (a < x){
-		printf("This is the subreddit being scanned: ");
-		printf("%s\n", subreddits[a]);
+		if (subreddits[a] == NULL)
+		{
+			;
+		}
+		else
+		{
+		strcat(foldercommand, "mkdir images/");
+		strcat(foldercommand, subreddits[a]);
+		system(foldercommand);
 		get_memes(subreddits[a++]);
+		strcpy(foldercommand, "");
+		}
 	}
-	printf("DONE!\n");
+	free(foldercommand);
+	foldercommand = NULL;
 	return 0;
 }
